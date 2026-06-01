@@ -60,8 +60,22 @@ def cmd_fuzz(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     duration = _parse_duration(args.duration)
-    custom_mutator = Path(args.custom_mutator) if args.custom_mutator else None
     log_dir = Path(args.log_dir) if args.log_dir else None
+
+    # Validate custom mutator path before printing the banner.
+    # Resolve relative to CWD so the error shows the absolute path the
+    # user actually needs to provide.
+    custom_mutator = None
+    if args.custom_mutator:
+        custom_mutator = Path(args.custom_mutator).resolve()
+        if not custom_mutator.exists():
+            print(
+                f"error: custom mutator not found: {custom_mutator}\n"
+                f"  (given: {args.custom_mutator})\n"
+                f"  Use an absolute path or a path relative to your current directory.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     # ── TUI setup ─────────────────────────────────────────────────
     use_tui = args.tui
