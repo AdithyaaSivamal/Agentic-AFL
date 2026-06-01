@@ -23,7 +23,7 @@ import json
 import logging
 import os
 import shutil
-import subprocessa
+import subprocess
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -129,8 +129,14 @@ async def _start_afl(
     custom_mutator_module: str | None = None,
     mutator_dir: Path | None = None,
     resume: bool = False,
+    stderr_log: Path | None = None,
 ) -> asyncio.subprocess.Process:
-    """Start an AFL++ fuzzer process."""
+    """Start an AFL++ fuzzer process.
+
+    Args:
+        stderr_log: If provided, AFL++ stderr is written here instead of
+                    DEVNULL. Useful for diagnosing mutator startup failures.
+    """
     env = os.environ.copy()
     env["AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES"] = "1"
     env["AFL_SKIP_CPUFREQ"] = "1"
@@ -139,9 +145,18 @@ async def _start_afl(
 
     if custom_mutator_module and mutator_dir:
         env["AFL_PYTHON_MODULE"] = custom_mutator_module
-        env["PYTHONPATH"] = str(mutator_dir)
+        # Prepend mutator dir to PYTHONPATH so AFL++ can import the module.
+        existing = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = (
+            str(mutator_dir) + ":" + existing if existing else str(mutator_dir)
+        )
 
     input_arg = "-" if resume else str(afl_in)
+
+    stderr_target = (
+        open(stderr_log, "wb") if stderr_log  # noqa: WPS515
+        else asyncio.subprocess.DEVNULL
+    )
 
     proc = await asyncio.create_subprocess_exec(
         "afl-fuzz", "-M", "default",
@@ -150,7 +165,7 @@ async def _start_afl(
         "--", str(binary), "@@",
         env=env,
         stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
+        stderr=stderr_target,
     )
     return proc
 
@@ -391,7 +406,8 @@ class CampaignRunner:
                 )
 
                 # Level 3: Deploy custom mutator.
-                if self.custom_mutator and self.custom_mutator.exists():
+                if self.custom_mutator:
+                    # Path is already resolved and validated at __init__ time.
                     log.info(
                         "Deploying custom mutator: %s",
                         self.custom_mutator.name,
@@ -405,14 +421,48 @@ class CampaignRunner:
                         self._afl_proc.kill()
                     await asyncio.sleep(1)
 
+                    # Clear the stale fuzzer_stats lock so AFL++ can resume
+                    # without deadlocking on its own instance lock.
+                    stale_stats = afl_out / "default" / "fuzzer_stats"
+                    if stale_stats.exists():
+                        stale_stats.unlink()
+                        log.debug("Cleared stale fuzzer_stats before resume")
+
+                    # Log AFL++ stderr to a file so mutator import errors surface.
+                    stderr_log = afl_out / "afl_mutator_stderr.log"
+
                     self._afl_proc = await _start_afl(
                         self.harness, afl_in, afl_out, afl_sync,
                         custom_mutator_module=self.custom_mutator.stem,
                         mutator_dir=self.custom_mutator.parent,
                         resume=True,
+                        stderr_log=stderr_log,
                     )
                     mutator_deployed = True
                     log.info("AFL++ restarted with custom mutator")
+
+                    # Liveness check: give AFL++ 4s to start, then verify it
+                    # is still running. If it exited, log the stderr for diagnosis.
+                    await asyncio.sleep(4)
+                    if self._afl_proc.returncode is not None:
+                        stderr_text = ""
+                        if stderr_log.exists():
+                            stderr_text = stderr_log.read_text()[-2000:]
+                        log.error(
+                            "AFL++ exited immediately after mutator restart "
+                            "(rc=%d). Mutator may have a Python import error.\n"
+                            "  Mutator: %s\n"
+                            "  AFL++ stderr:\n%s",
+                            self._afl_proc.returncode,
+                            self.custom_mutator,
+                            stderr_text or "(empty)",
+                        )
+                        mutator_deployed = False
+                    else:
+                        log.info(
+                            "Custom mutator active (AFL++ pid=%d)",
+                            self._afl_proc.pid,
+                        )
 
         # ── Finalize ──────────────────────────────────────────────
         elapsed_total = time.monotonic() - start
