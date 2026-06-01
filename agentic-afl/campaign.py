@@ -1,5 +1,5 @@
 """
-campaign.py — AFL++ + AgentLoop Campaign Lifecycle Manager.
+campaign.py — AFL++ and AgentLoop Campaign Lifecycle Manager.
 
 This is the core orchestration class that manages a complete fuzzing
 campaign: starting AFL++, running the AgentLoop, monitoring coverage,
@@ -23,7 +23,7 @@ import json
 import logging
 import os
 import shutil
-import subprocess
+import subprocessa
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
