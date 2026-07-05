@@ -162,6 +162,16 @@ TARGETS = {
         accept_marker="ICS_FRAME_ACCEPTED",
         custom_mutator="crc32_fixup_mutator",
     ),
+    "magma_libpng": TargetSpec(
+        name="Magma libpng",
+        source_file=None,
+        binary_name="magma_libpng_harness",
+        stall_function="png_crc_finish",
+        seed_bytes=b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x00\x00\x00\x00\xde\xad\xbe\xef\x00\x00\x00\nIDATx\x9cc`\x00\x00\x00\x02\x00\x01H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82',
+        description="libpng IHDR chunk CRC-32 validation (real CVE-bearing library, Magma benchmark family)",
+        build_script="build_magma_libpng_harness.sh",
+        accept_marker="PNG_DECODE_OK",
+    ),
 }
 
 
