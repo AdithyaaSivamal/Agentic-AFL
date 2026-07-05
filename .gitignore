@@ -16,6 +16,8 @@ logs/
 afl_output/
 .agentic_afl_workdir/
 data/
+experiments/tests/e2e_run/
+experiments/tests/e2e_campaign/
 
 # PostgreSQL Docker volume data (managed by docker compose)
 pgdata/
