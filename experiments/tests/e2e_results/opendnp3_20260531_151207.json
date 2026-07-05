@@ -1,0 +1,74 @@
+{
+  "target": "OpenDNP3 Outstation",
+  "target_key": "opendnp3",
+  "duration_seconds": 600,
+  "min_stall_seconds": 120,
+  "start_time": "2026-05-31T20:12:29.796497+00:00",
+  "baseline_edges": 60,
+  "final_edges": 103,
+  "payloads_injected": 0,
+  "stalls_detected": 0,
+  "react_turns": 0,
+  "llm_calls": 0,
+  "math_wall_bypassed": true,
+  "full_accept": true,
+  "bypass_evidence": "id:000083,src:000069,time:577120,execs:1705176,op:havoc,rep:4,+cov",
+  "timeline": [
+    {
+      "time_seconds": 64,
+      "edges": 75,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 130,
+      "edges": 75,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 190,
+      "edges": 79,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 251,
+      "edges": 82,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 312,
+      "edges": 85,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 373,
+      "edges": 85,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 434,
+      "edges": 95,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 496,
+      "edges": 101,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 559,
+      "edges": 103,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    }
+  ],
+  "elapsed_seconds": 576,
+  "end_time": "2026-05-31T20:22:06.772650+00:00"
+}

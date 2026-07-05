@@ -1,0 +1,86 @@
+{
+    "function_name": "check_sequence_number",
+    "function_entry": "0x101580",
+    "stall_address": "0x1015d0",
+    "taint_source": "RDI",
+    "taint_mode": "register",
+    "slice_depth": 6,
+    "instruction_count": 9,
+    "was_truncated": false,
+    "pruned_loads": [],
+    "binary_path": "./iec104_apci_x86",
+    "instructions": [
+        {
+            "address": "0x101580",
+            "mnemonic": "LOAD",
+            "inputs": ["(const, 0x1b1, 8)", "(unique, 0x100@101580, 8)"],
+            "output": "(unique, 0x200@101580, 1)",
+            "raw_pcode": "(unique, 0x200@101580, 1) = LOAD (const, 0x1b1, 8) (unique, 0x100@101580, 8)",
+            "call_target": null
+        },
+        {
+            "address": "0x101584",
+            "mnemonic": "LOAD",
+            "inputs": ["(const, 0x1b1, 8)", "(unique, 0x250@101584, 8)"],
+            "output": "(unique, 0x300@101584, 1)",
+            "raw_pcode": "(unique, 0x300@101584, 1) = LOAD (const, 0x1b1, 8) (unique, 0x250@101584, 8)",
+            "call_target": null
+        },
+        {
+            "address": "0x101590",
+            "mnemonic": "INT_ZEXT",
+            "inputs": ["(unique, 0x300@101584, 1)"],
+            "output": "(unique, 0x400@101590, 2)",
+            "raw_pcode": "(unique, 0x400@101590, 2) = INT_ZEXT (unique, 0x300@101584, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101594",
+            "mnemonic": "INT_LEFT",
+            "inputs": ["(unique, 0x400@101590, 2)", "(const, 0x8, 4)"],
+            "output": "(unique, 0x500@101594, 2)",
+            "raw_pcode": "(unique, 0x500@101594, 2) = INT_LEFT (unique, 0x400@101590, 2) (const, 0x8, 4)",
+            "call_target": null
+        },
+        {
+            "address": "0x101598",
+            "mnemonic": "INT_OR",
+            "inputs": ["(unique, 0x200@101580, 1)", "(unique, 0x500@101594, 2)"],
+            "output": "(unique, 0x600@101598, 2)",
+            "raw_pcode": "(unique, 0x600@101598, 2) = INT_OR (unique, 0x200@101580, 1) (unique, 0x500@101594, 2)",
+            "call_target": null
+        },
+        {
+            "address": "0x1015a0",
+            "mnemonic": "INT_RIGHT",
+            "inputs": ["(unique, 0x600@101598, 2)", "(const, 0x1, 4)"],
+            "output": "(unique, 0x700@1015a0, 2)",
+            "raw_pcode": "(unique, 0x700@1015a0, 2) = INT_RIGHT (unique, 0x600@101598, 2) (const, 0x1, 4)",
+            "call_target": null
+        },
+        {
+            "address": "0x1015a8",
+            "mnemonic": "INT_AND",
+            "inputs": ["(unique, 0x700@1015a0, 2)", "(const, 0x7fff, 2)"],
+            "output": "(unique, 0x800@1015a8, 2)",
+            "raw_pcode": "(unique, 0x800@1015a8, 2) = INT_AND (unique, 0x700@1015a0, 2) (const, 0x7fff, 2)",
+            "call_target": null
+        },
+        {
+            "address": "0x1015c0",
+            "mnemonic": "INT_NOTEQUAL",
+            "inputs": ["(unique, 0x800@1015a8, 2)", "(const, 0x0, 2)"],
+            "output": "(unique, 0x900@1015c0, 1)",
+            "raw_pcode": "(unique, 0x900@1015c0, 1) = INT_NOTEQUAL (unique, 0x800@1015a8, 2) (const, 0x0, 2)",
+            "call_target": null
+        },
+        {
+            "address": "0x1015d0",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101600, 8)", "(unique, 0x900@1015c0, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101600, 8) (unique, 0x900@1015c0, 1)",
+            "call_target": null
+        }
+    ]
+}

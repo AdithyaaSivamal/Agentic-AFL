@@ -1,0 +1,86 @@
+{
+    "function_name": "check_unit_id",
+    "function_entry": "0x101200",
+    "stall_address": "0x101260",
+    "taint_source": "RDI",
+    "taint_mode": "register",
+    "slice_depth": 6,
+    "instruction_count": 9,
+    "was_truncated": false,
+    "pruned_loads": [],
+    "binary_path": "./modbus_rtu_x86",
+    "instructions": [
+        {
+            "address": "0x101200",
+            "mnemonic": "LOAD",
+            "inputs": ["(const, 0x1b1, 8)", "(unique, 0x100@101200, 8)"],
+            "output": "(unique, 0x200@101200, 1)",
+            "raw_pcode": "(unique, 0x200@101200, 1) = LOAD (const, 0x1b1, 8) (unique, 0x100@101200, 8)",
+            "call_target": null
+        },
+        {
+            "address": "0x101210",
+            "mnemonic": "INT_EQUAL",
+            "inputs": ["(unique, 0x200@101200, 1)", "(const, 0x1, 1)"],
+            "output": "(unique, 0x300@101210, 1)",
+            "raw_pcode": "(unique, 0x300@101210, 1) = INT_EQUAL (unique, 0x200@101200, 1) (const, 0x1, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101218",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101280, 8)", "(unique, 0x300@101210, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101280, 8) (unique, 0x300@101210, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101220",
+            "mnemonic": "INT_EQUAL",
+            "inputs": ["(unique, 0x200@101200, 1)", "(const, 0x2, 1)"],
+            "output": "(unique, 0x400@101220, 1)",
+            "raw_pcode": "(unique, 0x400@101220, 1) = INT_EQUAL (unique, 0x200@101200, 1) (const, 0x2, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101228",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101280, 8)", "(unique, 0x400@101220, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101280, 8) (unique, 0x400@101220, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101230",
+            "mnemonic": "INT_EQUAL",
+            "inputs": ["(unique, 0x200@101200, 1)", "(const, 0xa, 1)"],
+            "output": "(unique, 0x500@101230, 1)",
+            "raw_pcode": "(unique, 0x500@101230, 1) = INT_EQUAL (unique, 0x200@101200, 1) (const, 0xa, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101238",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101280, 8)", "(unique, 0x500@101230, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101280, 8) (unique, 0x500@101230, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101240",
+            "mnemonic": "INT_EQUAL",
+            "inputs": ["(unique, 0x200@101200, 1)", "(const, 0xff, 1)"],
+            "output": "(unique, 0x600@101240, 1)",
+            "raw_pcode": "(unique, 0x600@101240, 1) = INT_EQUAL (unique, 0x200@101200, 1) (const, 0xff, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101260",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101280, 8)", "(unique, 0x600@101240, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101280, 8) (unique, 0x600@101240, 1)",
+            "call_target": null
+        }
+    ]
+}

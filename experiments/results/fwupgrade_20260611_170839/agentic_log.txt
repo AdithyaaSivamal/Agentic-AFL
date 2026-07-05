@@ -1,0 +1,28 @@
+2026-06-11 17:08:43,374 INFO agentic_afl.campaign: Loaded 4 seeds from /home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/experiments/test_targets/fwupgrade_seeds
+2026-06-11 17:08:46,380 INFO agentic_afl.campaign: AFL++ started (pid=2132416)
+2026-06-11 17:08:46,563 INFO agentic_afl.database.spec_store: SpecStore initialized (PostgreSQL at localhost:5432/agentic_afl)
+2026-06-11 17:08:46,564 INFO agentic_afl.orchestrator.agent_loop: Agent loop initialized (provider=gemini, model=gemini-2.5-flash, K=3, max_turns=5)
+2026-06-11 17:08:46,564 INFO agentic_afl.campaign: AgentLoop started (stall_threshold=3m)
+2026-06-11 17:08:46,564 INFO agentic_afl.orchestrator.agent_loop: Agent loop started — polling every 5.0s
+2026-06-11 17:11:46,762 INFO agentic_afl.fuzzer_bridge.stall_detector: Detected 1 new stall(s) at cycle 329 (edges=114, plateau=36)
+2026-06-11 17:11:46,762 INFO agentic_afl.orchestrator.agent_loop: Queued stall: 0x0000d7e4 (severity=HIGH, queue_size=1)
+2026-06-11 17:11:46,762 INFO agentic_afl.orchestrator.agent_loop: Processing stall at 0x0000d7e4 (severity=HIGH, cycles=36)
+2026-06-11 17:11:46,765 INFO agentic_afl.extractor.pcode_slicer: Running Ghidra headless: /opt/ghidra/support/pyghidraRun -H /tmp/ghidra_projects agentic_afl_project -import /home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/experiments/test_targets/fwupgrade_sysroot/bin/fwupgrade -postScript extract_pcode.py 0x0000d7e4 RDI 20 -scriptPath /home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/agentic_afl/extractor/ghidra_scripts -deleteProject
+2026-06-11 17:12:03,100 ERROR agentic_afl.orchestrator.agent_loop: Failed to process stall 0x0000d7e4: Ghidra script reported error: No function found at address 0xd7e4 (image_base=0x8000)
+Traceback (most recent call last):
+  File "/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/agentic_afl/orchestrator/agent_loop.py", line 245, in run
+    success = await self._process_stall(stall)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/agentic_afl/orchestrator/agent_loop.py", line 333, in _process_stall
+    pcode_slice = self._slicer.extract_slice(
+        binary_path=stall.binary_path,
+        stall_address=stall.stall_address,
+        taint_source=taint_source,
+    )
+  File "/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/agentic_afl/extractor/pcode_slicer.py", line 125, in extract_slice
+    raw_json = self._run_ghidra_headless(binary_path, stall_address, taint_source)
+  File "/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/agentic_afl/extractor/pcode_slicer.py", line 302, in _run_ghidra_headless
+    raise PCodeSlicerError(
+        f"Ghidra script reported error: {parsed['error']}"
+    )
+agentic_afl.extractor.pcode_slicer.PCodeSlicerError: Ghidra script reported error: No function found at address 0xd7e4 (image_base=0x8000)

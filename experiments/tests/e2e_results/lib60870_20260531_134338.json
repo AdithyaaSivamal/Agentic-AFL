@@ -1,0 +1,32 @@
+{
+  "target": "lib60870 APCI",
+  "target_key": "lib60870",
+  "duration_seconds": 600,
+  "min_stall_seconds": 300,
+  "start_time": "2026-05-31T18:43:48.154599+00:00",
+  "baseline_edges": 19,
+  "final_edges": 34,
+  "payloads_injected": 0,
+  "stalls_detected": 0,
+  "react_turns": 0,
+  "llm_calls": 0,
+  "math_wall_bypassed": true,
+  "full_accept": true,
+  "bypass_evidence": "id:000017,src:000016,time:136656,execs:571449,op:havoc,rep:4,+cov",
+  "timeline": [
+    {
+      "time_seconds": 60,
+      "edges": 34,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 120,
+      "edges": 34,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    }
+  ],
+  "elapsed_seconds": 136,
+  "end_time": "2026-05-31T18:46:04.225346+00:00"
+}

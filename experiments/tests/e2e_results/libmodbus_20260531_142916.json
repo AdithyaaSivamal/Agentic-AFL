@@ -1,0 +1,19 @@
+{
+  "target": "Libmodbus RTU",
+  "target_key": "libmodbus",
+  "duration_seconds": 600,
+  "min_stall_seconds": 300,
+  "start_time": "2026-05-31T19:29:23.770301+00:00",
+  "baseline_edges": 9,
+  "final_edges": 9,
+  "payloads_injected": 0,
+  "stalls_detected": 0,
+  "react_turns": 0,
+  "llm_calls": 0,
+  "math_wall_bypassed": true,
+  "full_accept": true,
+  "bypass_evidence": "id:000012,src:000000,time:259,execs:1189,op:havoc,rep:1,+cov",
+  "timeline": [],
+  "elapsed_seconds": 5,
+  "end_time": "2026-05-31T19:29:28.790373+00:00"
+}

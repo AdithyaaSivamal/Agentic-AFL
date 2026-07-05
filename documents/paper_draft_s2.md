@@ -1,0 +1,78 @@
+# Agentic-AFL — Draft: §2 Background & Motivation
+
+---
+
+## §2 Background and Motivation
+
+### §2.1 Coverage-Guided Grey-Box Fuzzing
+
+Coverage-guided grey-box fuzzing instruments a target binary at compile time to record which branch edges are exercised during each test input execution. AFL++ [AFL++] maintains a shared memory *edge bitmap* $B \in \{0,1\}^{N}$, where each bit $B_i$ records whether the directed edge from basic block $u$ to basic block $v$—indexed by $i = (u \oplus v) \bmod N$—was traversed during the current execution. The fuzzer maintains a corpus $C$ of *interesting* inputs: those that set at least one previously unset bit in $B$. Inputs that set no new bits are discarded. The mutation engine selects inputs from $C$, applies a schedule of byte-level mutations (bit flips, byte substitutions, splicing, and arithmetic operations), and filters the resulting variants through this coverage oracle [AFL++, LibFuzzer].
+
+This feedback loop is extraordinarily effective when mutations to input bytes produce *smooth gradients* in coverage: a small perturbation that satisfies one additional branch condition typically sets new bitmap bits, providing positive feedback that guides the search toward deeper program paths. The implicit assumption is that the relationship between input bytes and branch outcomes is *locally invertible*—that is, small input changes produce predictably small changes in program behavior that the fuzzer can exploit.
+
+This assumption fails categorically at polynomial integrity checks. Consider a cyclic redundancy check (CRC) computed over an input buffer $m \in \{0,1\}^{8n}$ of length $n$ bytes. A standard CRC-32, such as the ISO 3309/IEEE 802.3 variant with generator polynomial $G(x) = x^{32} + \ldots + 1$ (hexadecimal $0$xEDB88320 in reflected form), computes a 32-bit residue $r = m \bmod G$ over $GF(2^{32})$. The check at the parser evaluates the predicate $r \stackrel{?}{=} r^*$, where $r^*$ is the expected value stored in or derived from the input frame. Under AFL++'s bit-flip mutation, a single-bit perturbation $m' = m \oplus e_i$ (where $e_i$ is the unit vector at position $i$) produces $r' = m' \bmod G = r \oplus (e_i \bmod G)$. By the linearity of $GF(2)$ polynomial arithmetic, $e_i \bmod G$ is a non-zero, full-width 32-bit value for every bit position $i$—the *avalanche property* of CRC computation. Consequently, each single-bit mutation produces a maximally perturbed residue, providing zero gradient toward the target value $r^*$.
+
+The probability that a uniformly random 32-bit mutation satisfies the check is:
+
+$$P(\text{CRC-32 satisfied by random mutation}) = 2^{-32} \approx 2.3 \times 10^{-10}$$
+
+At a typical fuzzer throughput of $T = 10^4$ executions per second, the expected time to a satisfying mutation by chance is $T^{-1} \cdot 2^{32} \approx 4.97 \times 10^5$ seconds—approximately 5.75 days per target. For CRC-16 variants the expectation is approximately 6.5 seconds, which explains why AFL++ can eventually bypass 16-bit checks [Redqueen] but not 32-bit ones. The distinction is not merely quantitative: it constitutes a *qualitative barrier* that renders coverage-guided fuzzing ineffective for the class of targets we consider.
+
+---
+
+### §2.2 Math Walls in ICS Protocols
+
+We define a *math wall* as any non-trivial integrity predicate that guards access to a branch target of security interest, satisfies the avalanche property with respect to byte-level mutations, and has bit-width $k \geq 32$ such that brute-force satisfaction is computationally infeasible at fuzzer throughput rates. This definition includes CRC-32 and CRC-64 checksums, HMAC-based authentication tags, stream cipher keystream comparisons, and state-dependent sequence number constraints whose value depends on prior protocol history.
+
+Math walls are particularly prevalent in ICS and OT protocol implementations for two reasons. First, industrial communication protocols are designed for reliability in electromagnetically noisy environments where frame corruption is a common occurrence; integrity checks are therefore ubiquitous at the data link, transport, and application layers [IEC61784]. Second, ICS protocols predate the widespread adoption of cryptographic authentication: their integrity mechanisms use lightweight, deterministic polynomial checks—CRC-16 (Modbus RTU, DNP3, BACnet MS/TP), CRC-32 (PROFINET, EtherCAT safety frames, FSoE)—implemented in software and verified at the application layer before any payload processing occurs. These checks are, by design, gates: a frame that fails the integrity check is discarded without further processing, and no state transition occurs.
+
+**Motivating example.** Consider the Modbus RTU frame format, the dominant serial communication protocol for ICS field device communication. A valid Modbus RTU request frame takes the form:
+
+$$\texttt{[Addr: 1B][FuncCode: 1B][Data: N\cdot B][CRC\_LO: 1B][CRC\_HI: 1B]}$$
+
+where the 16-bit CRC is computed over the preceding $(N+2)$ bytes using the CRC-16/Modbus polynomial $G_{16}(x)$ with reflection (hexadecimal $0$xA001). The receiver's implementation evaluates:
+
+$$r = \text{CRC16}(m[0 \ldots N+1]) \stackrel{?}{=} \big(m[N+2] \mid m[N+3] \ll 8\big)$$
+
+A coverage-guided fuzzer exploring this binary will rapidly discover the outer frame structure—address byte range, valid function codes, and plausible data lengths—through mutation of the first $(N+2)$ bytes. However, it will never satisfy the CRC predicate by random mutation: the two bytes at positions $N+2$ and $N+3$ must encode the exact CRC-16 residue of the preceding bytes, a value that changes with every mutation to any earlier byte in the frame. The fuzzer's coverage bitmap will show a permanent plateau at the CRC check branch, with no new edges discovered in the downstream state machine. In our experiments, AFL++ running for 15 minutes against a libmodbus harness with CRC validation enabled discovers [N\_modbus] edges prior to the CRC check and zero edges beyond it.
+
+The same structural barrier appears across the ICS protocol landscape. OpenDNP3 applies a CRC-16/DNP3 check (polynomial $0$xA6BC) to each 16-byte data link layer block independently, requiring correct CRC computation at multiple offsets for a single valid frame [DNP3]. The NASA Core Flight System (cFS) verifies a 16-bit XOR-additive checksum over the CCSDS primary and secondary headers before dispatching any command [cFS]. The PROFINET and EtherCAT safety protocol frame extension (FSoE) applies CRC-32 over the entire process data frame [IEC61784-3]. In each case, the math wall appears at the shallowest defensible point in the parsing chain and is effectively impenetrable to unmodified coverage-guided fuzzing.
+
+---
+
+### §2.3 Limitations of Existing Approaches
+
+We survey three categories of prior work that are most directly relevant to math wall bypass and characterize their specific shortcomings in this setting.
+
+**Concolic and Symbolic Execution.**
+Hybrid fuzzing systems such as Driller [Driller], QSYM [QSYM], and SymCC [SymCC] augment coverage-guided fuzzing with concolic execution: when a fuzzer stalls, a symbolic execution engine traces one or more inputs, accumulates path constraints, and queries an SMT solver to derive inputs that satisfy previously unsatisfied branch conditions. QSYM achieves substantial improvements over AFL alone by using a lightweight, JIT-compiled symbolic executor that reduces the overhead of symbolic tracking [QSYM]. SymCC compiles symbolic evaluation directly into the target binary, achieving further efficiency gains through compilation rather than interpretation [SymCC].
+
+However, these approaches face two fundamental challenges when applied to ICS protocol parsers. First, *path explosion*: protocol state machines with $k$ branch conditions produce up to $2^k$ symbolic paths, and the libraries underlying ICS implementations—C++ virtual dispatch tables, heap-allocated context structures, STL containers—introduce unbounded recursion into the symbolic state that SMT solvers cannot tractably handle [HyLLfuzz, Angr]. Second, *constraint interference*: concolic engines accumulate *all* path constraints along a given execution trace, including conditions unrelated to the math wall. For a CRC check embedded within a complex parsing function, the solver must simultaneously satisfy dozens of unrelated constraints—field length bounds, type discriminants, padding alignment—before arriving at the CRC predicate. In practice, this produces timeouts rather than solutions on real-world protocol targets. Fuzzolic [Fuzzolic] partially addresses this by using approximate satisfiability techniques, but its evaluation does not include polynomial CRC constraints of width $\geq 32$.
+
+Angr [Angr], the most widely used academic symbolic execution framework, provides a more complete analysis environment but at the cost of execution speed: symbolic execution of a single CRC-32 computation over a 15-byte buffer through Angr's VEX IR lifter, including table-driven dispatch, requires [T\_angr] seconds in our preliminary evaluation—more than two orders of magnitude slower than the fuzzer's native execution rate, making it unsuitable for continuous integration with a live campaign.
+
+**Input-to-State Inference.**
+Redqueen [Redqueen] and AFL++'s CmpLog instrumentation [AFL++] address a related but distinct class of branch constraints: *constant-equality comparisons* of the form $\text{input}[i:j] \stackrel{?}{=} c$ for a program constant $c$. By observing the operands of comparison instructions during concrete execution (the *input-to-state correspondence* [Redqueen]), these techniques identify the byte positions in the input that correspond to a comparison operand and substitute the matching constant value. This approach effectively eliminates magic-byte barriers and substantially improves coverage on format-string parsers and protocol decoders with fixed header fields.
+
+The limitation is fundamental: input-to-state inference requires that a comparison operand be *directly derivable* from input bytes—that is, that some contiguous subsequence of the input bytes, possibly after byte-order normalization, equals the comparison value. CRC polynomials violate this requirement by design. The CRC residue is a function of *all* input bytes through a non-linear polynomial transformation; no individual input byte is in an input-to-state correspondence with any byte of the residue. AFL++'s CmpLog mode applied to our CRC-32 harness correctly identifies the comparison at the CRC check instruction but fails to find a substitution because neither operand appears in the input: one operand is the computed residue and the other is the stored expected value, both of which depend on all input bytes through the table-driven computation. Our experiments confirm that CmpLog makes no progress on CRC-32 targets beyond the performance of standard AFL++ with bit-flip mutations alone.
+
+**LLM-Assisted Constraint Solving.**
+A more recent line of work applies large language models to program analysis tasks, including constraint solving. LLM-Sym [LLM-Sym] prompts an LLM with decompiled C code and requests a Z3 Python script that encodes the observed constraints; the generated script is executed and the resulting model is used to construct satisfying inputs. ConstraintLLM [ConstraintLLM] extends this with a structured constraint type ontology that guides prompt construction, improving the rate of syntactically correct Z3 generation. LINC [LINC] introduces *K-way voting*: $K$ independently generated scripts are executed in parallel, and the first satisfiable result is returned, exploiting variance in LLM output to mitigate per-call failure rates of 13–38%. SAILOR [SAILOR] applies a ReAct-style [ReAct] self-correction loop in which execution errors are fed back to the LLM for iterative repair.
+
+These systems share a critical architectural limitation: they are designed as *offline analysis pipelines* that operate on human-curated program fragments. LLM-Sym requires a human analyst to identify the relevant decompiled function and manually supply it to the pipeline. ConstraintLLM assumes that the structural constraint type has been pre-classified by a domain expert. Neither system integrates with a running fuzzer: they produce a payload as output, but the injection of that payload into the fuzzer corpus, the monitoring of whether it produces a coverage event, and the subsequent driving of exploration in the newly unlocked region all require manual intervention. HyLLfuzz [HyLLfuzz] proposes a conceptual architecture for LLM-fuzzer integration but does not demonstrate autonomous runtime stall detection or closed-loop feedback. TDD\_v2 [TDD\_v2] demonstrates automated sync-directory payload injection but does not address automated constraint identification or solving. To the best of our knowledge, no prior system autonomously performs the complete sequence: stall detection $\to$ constraint extraction $\to$ LLM-driven solving $\to$ verified payload injection $\to$ post-solve coverage escalation within a live fuzzing campaign.
+
+---
+
+### §2.4 The Agentic Loop: Key Insight
+
+The limitations surveyed above suggest a natural synthesis, which we formalize as the *agentic fuzzing loop*. The central insight is as follows.
+
+A single LLM call is insufficient to reliably solve a polynomial CRC constraint: zero-shot Z3 generation exhibits a syntax error rate of 13–38% [LINC] and a semantic error rate (scripts that are syntactically valid but produce UNSAT or incorrect byte models) of an additional [P\_semantic]% on complex constraint types. However, the failure modes of LLM-generated Z3 scripts are *diagnosable and correctable*: a syntax error produces a Python traceback; an UNSAT result from an incorrectly formulated constraint produces a Z3 diagnostic; a semantically incorrect model produces a target binary rejection. Each of these failure signals is machine-readable and can be fed back to the LLM as corrective context.
+
+We observe that this error-correction structure is precisely the setting for which ReAct-style [ReAct] agentic loops were designed: a reasoning agent takes an action (generate script), observes the outcome (execute, receive verdict), and conditions its next action on the observation (repair the script based on the error). Under this formulation, constraint solving becomes a sequential decision process in which the LLM serves as the policy and the Z3 sandbox serves as the environment. Empirically, [SAILOR] demonstrates that such loops converge in a median of [T\_react] turns for program analysis tasks of comparable complexity. In our system, the loop operates under a wall-clock budget of [T\_budget] seconds per stall site, ensuring that AFL++ is not interrupted for longer than the configured stall threshold.
+
+The agentic loop further enables a design that does not require the LLM to perform the complete constraint analysis from scratch. By providing the LLM with a pre-retrieved *constraint template*—a Z3 solving pattern structurally matched to the observed P-Code signature via Jaccard similarity—the generation task is reduced from open-ended code synthesis to *template instantiation with concrete constants*. This separation of structural retrieval (performed by CARM, §3.5) from semantic instantiation (performed by the LLM, §3.6) substantially reduces the complexity of the generation task and the rate of semantic errors, while preserving generalization to previously unseen constraint algorithms through nearest-neighbor structural matching.
+
+---
+
+*[End of §2 draft. Placeholders marked in brackets to be filled with experimental data.]*

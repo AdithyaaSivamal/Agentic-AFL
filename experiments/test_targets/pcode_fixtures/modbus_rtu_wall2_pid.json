@@ -1,0 +1,70 @@
+{
+    "function_name": "check_protocol_id",
+    "function_entry": "0x1011c0",
+    "stall_address": "0x1011e8",
+    "taint_source": "RDI",
+    "taint_mode": "register",
+    "slice_depth": 4,
+    "instruction_count": 7,
+    "was_truncated": false,
+    "pruned_loads": [],
+    "binary_path": "./modbus_rtu_x86",
+    "instructions": [
+        {
+            "address": "0x1011c0",
+            "mnemonic": "LOAD",
+            "inputs": ["(const, 0x1b1, 8)", "(unique, 0x100@1011c0, 8)"],
+            "output": "(unique, 0x200@1011c0, 1)",
+            "raw_pcode": "(unique, 0x200@1011c0, 1) = LOAD (const, 0x1b1, 8) (unique, 0x100@1011c0, 8)",
+            "call_target": null
+        },
+        {
+            "address": "0x1011c4",
+            "mnemonic": "INT_ZEXT",
+            "inputs": ["(unique, 0x200@1011c0, 1)"],
+            "output": "(unique, 0x300@1011c4, 2)",
+            "raw_pcode": "(unique, 0x300@1011c4, 2) = INT_ZEXT (unique, 0x200@1011c0, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x1011c8",
+            "mnemonic": "INT_LEFT",
+            "inputs": ["(unique, 0x300@1011c4, 2)", "(const, 0x8, 4)"],
+            "output": "(unique, 0x400@1011c8, 2)",
+            "raw_pcode": "(unique, 0x400@1011c8, 2) = INT_LEFT (unique, 0x300@1011c4, 2) (const, 0x8, 4)",
+            "call_target": null
+        },
+        {
+            "address": "0x1011cc",
+            "mnemonic": "LOAD",
+            "inputs": ["(const, 0x1b1, 8)", "(unique, 0x450@1011cc, 8)"],
+            "output": "(unique, 0x500@1011cc, 1)",
+            "raw_pcode": "(unique, 0x500@1011cc, 1) = LOAD (const, 0x1b1, 8) (unique, 0x450@1011cc, 8)",
+            "call_target": null
+        },
+        {
+            "address": "0x1011d0",
+            "mnemonic": "INT_OR",
+            "inputs": ["(unique, 0x400@1011c8, 2)", "(unique, 0x500@1011cc, 1)"],
+            "output": "(unique, 0x600@1011d0, 2)",
+            "raw_pcode": "(unique, 0x600@1011d0, 2) = INT_OR (unique, 0x400@1011c8, 2) (unique, 0x500@1011cc, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x1011e0",
+            "mnemonic": "INT_NOTEQUAL",
+            "inputs": ["(unique, 0x600@1011d0, 2)", "(const, 0x0, 2)"],
+            "output": "(unique, 0x700@1011e0, 1)",
+            "raw_pcode": "(unique, 0x700@1011e0, 1) = INT_NOTEQUAL (unique, 0x600@1011d0, 2) (const, 0x0, 2)",
+            "call_target": null
+        },
+        {
+            "address": "0x1011e8",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101200, 8)", "(unique, 0x700@1011e0, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101200, 8) (unique, 0x700@1011e0, 1)",
+            "call_target": null
+        }
+    ]
+}

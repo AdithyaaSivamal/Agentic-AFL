@@ -1,0 +1,175 @@
+{
+  "target_name": "ics_crc32_harness",
+  "baseline_edges": 9,
+  "final_edges": 84,
+  "edge_gain": 75,
+  "edge_gain_pct": 833.3333333333334,
+  "bypass_detected": true,
+  "bypass_time_seconds": 422,
+  "bypass_evidence": "id:000018,sync:foreign_0,src:agentic_diverse_pd_r,+cov",
+  "payloads_injected": 36,
+  "stalls_detected": 1,
+  "llm_calls": 1,
+  "react_turns": 1,
+  "elapsed_seconds": 900,
+  "duration_seconds": 900,
+  "timeline": [
+    {
+      "time_seconds": 30,
+      "edges": 9,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 60,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 90,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 120,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 150,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 180,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 210,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 240,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 271,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 301,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 331,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 361,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 392,
+      "edges": 15,
+      "stalls_detected": 1,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 422,
+      "edges": 15,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 453,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 484,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 514,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 544,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 574,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 604,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 634,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 664,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 694,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 724,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 785,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 845,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    }
+  ],
+  "mutator_deployed": true
+}

@@ -1,0 +1,38 @@
+{
+    "function_name": "check_start_byte",
+    "function_entry": "0x101400",
+    "stall_address": "0x101418",
+    "taint_source": "RDI",
+    "taint_mode": "register",
+    "slice_depth": 3,
+    "instruction_count": 4,
+    "was_truncated": false,
+    "pruned_loads": [],
+    "binary_path": "./iec104_apci_x86",
+    "instructions": [
+        {
+            "address": "0x101400",
+            "mnemonic": "LOAD",
+            "inputs": ["(const, 0x1b1, 8)", "(register, RDI, 8)"],
+            "output": "(unique, 0x100@101400, 1)",
+            "raw_pcode": "(unique, 0x100@101400, 1) = LOAD (const, 0x1b1, 8) (register, RDI, 8)",
+            "call_target": null
+        },
+        {
+            "address": "0x101408",
+            "mnemonic": "INT_NOTEQUAL",
+            "inputs": ["(unique, 0x100@101400, 1)", "(const, 0x68, 1)"],
+            "output": "(unique, 0x200@101408, 1)",
+            "raw_pcode": "(unique, 0x200@101408, 1) = INT_NOTEQUAL (unique, 0x100@101400, 1) (const, 0x68, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101418",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101440, 8)", "(unique, 0x200@101408, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101440, 8) (unique, 0x200@101408, 1)",
+            "call_target": null
+        }
+    ]
+}

@@ -1,0 +1,9 @@
+# environment variables:
+AFL_CUSTOM_INFO_PROGRAM=/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/experiments/test_targets/fwupgrade_sysroot/bin/fwupgrade
+AFL_CUSTOM_INFO_PROGRAM_ARGV=@@
+AFL_CUSTOM_INFO_OUT=/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/experiments/results/fwupgrade_20260611_153928/baseline_out/default
+AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1
+AFL_PATH=/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/experiments/test_targets/fwupgrade_shim/AFLplusplus
+AFL_SKIP_CPUFREQ=1
+# command line:
+'afl-fuzz' '-Q' '-i' '/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/experiments/test_targets/fwupgrade_seeds' '-o' '/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/experiments/results/fwupgrade_20260611_153928/baseline_out' '--' '/home/adi/Documents/IoT_Lab/Agentic-AFL/whiteboard/Agentic-AFL-dev/experiments/test_targets/fwupgrade_sysroot/bin/fwupgrade' '@@'

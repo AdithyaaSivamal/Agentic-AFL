@@ -1,0 +1,195 @@
+{
+  "target": "ICS CRC-32",
+  "target_key": "ics_crc32",
+  "duration_seconds": 1800,
+  "min_stall_seconds": 300,
+  "start_time": "2026-06-01T01:16:44.204146+00:00",
+  "baseline_edges": 9,
+  "final_edges": 84,
+  "payloads_injected": 36,
+  "stalls_detected": 1,
+  "react_turns": 1,
+  "llm_calls": 1,
+  "math_wall_bypassed": true,
+  "full_accept": true,
+  "bypass_evidence": "id:000018,sync:foreign_0,src:agentic_6300e5ee_0x0,+cov",
+  "timeline": [
+    {
+      "time_seconds": 60,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 120,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 181,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 241,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 302,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 362,
+      "edges": 15,
+      "stalls_detected": 0,
+      "payloads_injected": 0
+    },
+    {
+      "time_seconds": 424,
+      "edges": 15,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 484,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 545,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 605,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 666,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 726,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 787,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 847,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 908,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 968,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1029,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1089,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1150,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1210,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1271,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1331,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1392,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1452,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1513,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1573,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1634,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1694,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    },
+    {
+      "time_seconds": 1755,
+      "edges": 84,
+      "stalls_detected": 1,
+      "payloads_injected": 36
+    }
+  ],
+  "bypass_time_seconds": 454,
+  "elapsed_seconds": 1800,
+  "end_time": "2026-06-01T01:46:44.880889+00:00"
+}

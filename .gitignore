@@ -1,0 +1,74 @@
+# Agentic-AFL Development Environment
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Runtime directories (created by setup.sh, not tracked)
+logs/
+afl_output/
+.agentic_afl_workdir/
+data/
+
+# PostgreSQL Docker volume data (managed by docker compose)
+pgdata/
+
+# Z3 sandbox temp files
+/tmp/agentic_afl_sandbox/
+
+# Vendored AFL++ engine (huge; not our code)
+AFLplusplus/
+
+# Vendored external library sources fetched by build_*.sh scripts —
+# regenerable via `git clone` (see each build script's error message for
+# the exact command), not hand-authored, and large.
+experiments/test_targets/opendnp3/
+experiments/test_targets/opendnp3_deps/
+experiments/test_targets/libmodbus/
+experiments/test_targets/libpng/
+experiments/test_targets/cfe/
+experiments/test_targets/fwupgrade_shim/
+experiments/test_targets/fwupgrade_sysroot/
+experiments/test_targets/binaries/
+
+# Compiled harness binaries (regenerable via build_*.sh scripts).
+# Every real-world/synthetic target produces one; excluded by pattern
+# (no extension, executable) rather than an exhaustive per-binary list.
+experiments/test_targets/*_harness
+experiments/test_targets/*_x86
+experiments/test_targets/*_afl
+experiments/test_targets/*_target
+
+# Ghidra project caches (.rep/.gpr directories + lock files) —
+# regenerated on every pcode_slicer.py / test_live_ghidra.py run.
+experiments/test_targets/*_ghidra/
+*.gpr.lock
+
+# Crash core dumps from old QEMU/AFL runs.
+*.core
+qemu_*.core
+
+# More vendored external clones (outside test_targets/) — nanoMODBUS has
+# its own .git, which git refuses to nest as a plain file (embedded repo
+# warning); exclude rather than add as a submodule.
+experiments/targets/eval/nanomodbus_fuzz/nanoMODBUS/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env

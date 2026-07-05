@@ -1,0 +1,20 @@
+{
+  "target": "Arithmetic",
+  "target_key": "arithmetic",
+  "duration_seconds": 20,
+  "min_stall_seconds": 60,
+  "start_time": "2026-07-05T01:00:44.348117+00:00",
+  "baseline_edges": 7,
+  "final_edges": 7,
+  "payloads_injected": 0,
+  "stalls_detected": 0,
+  "react_turns": 0,
+  "llm_calls": 0,
+  "math_wall_bypassed": true,
+  "full_accept": true,
+  "bypass_evidence": "id:000004,src:000002,time:1711,execs:7588,op:havoc,rep:2,+cov",
+  "timeline": [],
+  "bypass_time_seconds": 5,
+  "elapsed_seconds": 20,
+  "end_time": "2026-07-05T01:01:04.454081+00:00"
+}

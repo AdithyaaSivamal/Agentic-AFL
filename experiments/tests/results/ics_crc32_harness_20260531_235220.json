@@ -1,0 +1,18 @@
+{
+  "target_name": "ics_crc32_harness",
+  "baseline_edges": 9,
+  "final_edges": 15,
+  "edge_gain": 6,
+  "edge_gain_pct": 66.66666666666666,
+  "bypass_detected": false,
+  "bypass_time_seconds": null,
+  "bypass_evidence": null,
+  "payloads_injected": 0,
+  "stalls_detected": 0,
+  "llm_calls": 0,
+  "react_turns": 0,
+  "elapsed_seconds": 25,
+  "duration_seconds": 900,
+  "timeline": [],
+  "mutator_deployed": false
+}

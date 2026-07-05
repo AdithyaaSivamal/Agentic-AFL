@@ -1,0 +1,78 @@
+{
+    "function_name": "check_frame_format",
+    "function_entry": "0x101500",
+    "stall_address": "0x101548",
+    "taint_source": "RDI",
+    "taint_mode": "register",
+    "slice_depth": 5,
+    "instruction_count": 8,
+    "was_truncated": false,
+    "pruned_loads": [],
+    "binary_path": "./iec104_apci_x86",
+    "instructions": [
+        {
+            "address": "0x101500",
+            "mnemonic": "LOAD",
+            "inputs": ["(const, 0x1b1, 8)", "(unique, 0x100@101500, 8)"],
+            "output": "(unique, 0x200@101500, 1)",
+            "raw_pcode": "(unique, 0x200@101500, 1) = LOAD (const, 0x1b1, 8) (unique, 0x100@101500, 8)",
+            "call_target": null
+        },
+        {
+            "address": "0x101508",
+            "mnemonic": "INT_AND",
+            "inputs": ["(unique, 0x200@101500, 1)", "(const, 0x1, 1)"],
+            "output": "(unique, 0x300@101508, 1)",
+            "raw_pcode": "(unique, 0x300@101508, 1) = INT_AND (unique, 0x200@101500, 1) (const, 0x1, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101510",
+            "mnemonic": "INT_EQUAL",
+            "inputs": ["(unique, 0x300@101508, 1)", "(const, 0x0, 1)"],
+            "output": "(unique, 0x400@101510, 1)",
+            "raw_pcode": "(unique, 0x400@101510, 1) = INT_EQUAL (unique, 0x300@101508, 1) (const, 0x0, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101518",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101560, 8)", "(unique, 0x400@101510, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101560, 8) (unique, 0x400@101510, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101520",
+            "mnemonic": "INT_AND",
+            "inputs": ["(unique, 0x200@101500, 1)", "(const, 0x3, 1)"],
+            "output": "(unique, 0x500@101520, 1)",
+            "raw_pcode": "(unique, 0x500@101520, 1) = INT_AND (unique, 0x200@101500, 1) (const, 0x3, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101528",
+            "mnemonic": "INT_EQUAL",
+            "inputs": ["(unique, 0x500@101520, 1)", "(const, 0x1, 1)"],
+            "output": "(unique, 0x600@101528, 1)",
+            "raw_pcode": "(unique, 0x600@101528, 1) = INT_EQUAL (unique, 0x500@101520, 1) (const, 0x1, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101538",
+            "mnemonic": "INT_EQUAL",
+            "inputs": ["(unique, 0x500@101520, 1)", "(const, 0x3, 1)"],
+            "output": "(unique, 0x700@101538, 1)",
+            "raw_pcode": "(unique, 0x700@101538, 1) = INT_EQUAL (unique, 0x500@101520, 1) (const, 0x3, 1)",
+            "call_target": null
+        },
+        {
+            "address": "0x101548",
+            "mnemonic": "CBRANCH",
+            "inputs": ["(ram, 0x101580, 8)", "(unique, 0x700@101538, 1)"],
+            "output": null,
+            "raw_pcode": "CBRANCH (ram, 0x101580, 8) (unique, 0x700@101538, 1)",
+            "call_target": null
+        }
+    ]
+}
