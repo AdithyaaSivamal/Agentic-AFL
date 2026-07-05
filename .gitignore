@@ -60,6 +60,9 @@ qemu_*.core
 # warning); exclude rather than add as a submodule.
 experiments/targets/eval/nanomodbus_fuzz/nanoMODBUS/
 
+# Local git worktrees (feature isolation)
+.worktrees/
+
 # IDE
 .idea/
 .vscode/
