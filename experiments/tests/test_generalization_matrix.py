@@ -310,6 +310,9 @@ def check_partial_bypass(afl_out: Path, binary: Path, stall_func: str) -> str | 
         "transition_auth_challenge": "AUTH_CHALLENGE",
         # OpenDNP3: CRC_HEADER_PASS = header CRC solved but body may fail
         "_ZN8opendnp315LinkLayerParser10ReadHeaderEv": "CRC_HEADER_PASS",
+        # magma_libpng: CRC-32 solved (png_crc_finish cleared) but IHDR
+        # semantic fields (width/height/bit-depth) still fail a later check.
+        "png_crc_finish": "Invalid IHDR data",
         # check_sequence_number has no indicator — it's the last wall,
         # so bypassing it produces ACCEPT (caught by check_for_accept).
     }
