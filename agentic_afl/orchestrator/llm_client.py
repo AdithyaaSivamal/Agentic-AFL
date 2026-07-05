@@ -46,6 +46,9 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Awaitable, TypeVar
+
+_T = TypeVar("_T")
 
 from agentic_afl.config import settings
 from agentic_afl.constants import ARCH_REGISTER_WIDTH, Architecture, ConstraintTag
@@ -81,6 +84,40 @@ _CODE_BLOCK_RE = re.compile(
 class LLMClientError(Exception):
     """Raised when LLM API communication fails."""
     pass
+
+
+async def _gather_bounded(coros: list[Awaitable[_T]], timeout: float) -> list[_T]:
+    """
+    Run coroutines concurrently, each individually bounded by `timeout`.
+
+    Health-review follow-up: a single asyncio.wait_for() wrapped around
+    the whole asyncio.gather() (the original C1 fix) cancels EVERY call
+    the instant any one of them exceeds the timeout -- including calls
+    that already completed successfully. For K-way LLM voting, a lone
+    slow straggler among K concurrent API calls would silently discard
+    the other K-1 results that were already sitting there, wasting an
+    entire ReAct turn and its rate-limit budget for no reason.
+
+    Bounding each call individually means a straggler only costs its own
+    slot; the survivors are returned normally. Only raises if every
+    single call times out (nothing to return). Generic over the per-call
+    return type: Gemini uses this with one completion string per call,
+    OpenAI uses it with a single call whose result is itself the full
+    list[str] of n completions.
+    """
+    async def _bounded(coro: Awaitable[_T]) -> _T | None:
+        try:
+            return await asyncio.wait_for(coro, timeout=timeout)
+        except asyncio.TimeoutError:
+            return None
+
+    results = await asyncio.gather(*[_bounded(c) for c in coros])
+    successful = [r for r in results if r is not None]
+    if not successful:
+        raise asyncio.TimeoutError(
+            f"All {len(coros)} calls timed out after {timeout}s"
+        )
+    return successful
 
 
 class BaseLLMProvider(ABC):
@@ -141,17 +178,27 @@ class OpenAIProvider(BaseLLMProvider):
     ) -> list[str]:
         """Generate n completions via OpenAI's chat.completions API."""
         client = self._get_client()
-        response = await client.chat.completions.create(
-            model=self.model_name,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-            n=n,
-        )
-        return [choice.message.content or "" for choice in response.choices]
+
+        async def _single_call() -> list[str]:
+            response = await client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                n=n,
+            )
+            return [choice.message.content or "" for choice in response.choices]
+
+        # OpenAI's n candidates come back atomically in one HTTP call, so
+        # there is no "K parallel calls, one straggler" scenario like
+        # Gemini's -- but self-bound here anyway so this provider degrades
+        # the same way (a catchable timeout) rather than relying solely on
+        # LLMClient._call_provider's now-generous backstop timeout.
+        results = await _gather_bounded([_single_call()], timeout=settings.llm_timeout_seconds)
+        return results[0]
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -180,9 +227,11 @@ class GeminiProvider(BaseLLMProvider):
         """
         Generate n completions via Gemini API.
 
-        Uses asyncio.gather for K concurrent, independent calls.
-        This maximizes variance between candidates (LINC requirement)
-        and avoids any API candidate_count restrictions.
+        Uses K concurrent, independent calls (rather than the API's own
+        candidate_count) to maximize variance between candidates (LINC
+        requirement) and avoid candidate_count restrictions. Each call is
+        bounded individually via _gather_bounded so a single slow
+        straggler only costs its own slot, not the other K-1 results.
         """
         from google.genai import types
 
@@ -211,8 +260,10 @@ class GeminiProvider(BaseLLMProvider):
                     )
             return response.text or ""
 
-        results = await asyncio.gather(*[_single_call() for _ in range(n)])
-        return list(results)
+        return await _gather_bounded(
+            [_single_call() for _ in range(n)],
+            timeout=settings.llm_timeout_seconds,
+        )
 
 
 class LocalProvider(BaseLLMProvider):
@@ -304,10 +355,20 @@ class LLMClient:
         Health-review fix (C1): provider.generate() previously had no
         timeout. A stuck HTTP call (dead connection, provider-side hang)
         would block this coroutine — and with it, the AgentLoop's single
-        stall-processing loop — forever. asyncio.wait_for() here ensures
-        a single bad call degrades to a normal, catchable failure instead
-        of an unbounded hang. This mirrors the pattern already used in
-        z3_sandbox.Z3Sandbox.execute() for the same class of risk.
+        stall-processing loop — forever. This mirrors the pattern already
+        used in z3_sandbox.Z3Sandbox.execute() for the same class of risk.
+
+        Both providers now self-bound internally at settings.llm_timeout_seconds
+        via _gather_bounded (health-review follow-up: the original version
+        of this fix wrapped the *entire* K-way batch in one outer
+        wait_for, so a single slow straggler discarded every completion,
+        including ones that had already succeeded). The timeout here is
+        deliberately more generous than that primary bound — it's a
+        defense-in-depth backstop against a provider that doesn't
+        self-bound correctly (e.g. a future provider implementation),
+        not the mechanism that normally fires. Sized to give the
+        provider's own per-call bounding + gather/cleanup overhead room
+        to finish and return partial results first.
         """
         try:
             return await asyncio.wait_for(
@@ -318,11 +379,11 @@ class LLMClient:
                     max_tokens=self.max_tokens,
                     n=n,
                 ),
-                timeout=settings.llm_timeout_seconds,
+                timeout=settings.llm_timeout_seconds * 2,
             )
         except asyncio.TimeoutError as e:
             raise LLMClientError(
-                f"LLM provider call timed out after {settings.llm_timeout_seconds}s "
+                f"LLM provider call timed out after {settings.llm_timeout_seconds * 2}s "
                 f"(n={n})"
             ) from e
 

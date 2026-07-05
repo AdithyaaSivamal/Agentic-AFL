@@ -37,9 +37,11 @@ from agentic_afl.models import (
 )
 from agentic_afl.orchestrator.llm_client import (
     BaseLLMProvider,
+    GeminiProvider,
     LLMClient,
     LLMClientError,
     LocalProvider,
+    _gather_bounded,
 )
 from agentic_afl.orchestrator.rate_limiter import RateLimiter
 
@@ -331,3 +333,140 @@ class TestLocalProvider:
         provider = LocalProvider()
         with pytest.raises(NotImplementedError):
             await provider.generate("sys", "user", 0.7, 1000, 1)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  _gather_bounded — per-call timeout isolation
+#
+#  Regression guard for a real bug hit in live use: the original C1 fix
+#  wrapped a whole K-way asyncio.gather() in one outer asyncio.wait_for,
+#  so a single slow straggler among K concurrent Gemini calls discarded
+#  every completion -- including ones that had already succeeded --
+#  wasting an entire ReAct turn. _gather_bounded fixes this by bounding
+#  each call individually.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def _fast(value: str, delay: float = 0.0) -> str:
+    if delay:
+        await asyncio.sleep(delay)
+    return value
+
+
+async def _never_finishes() -> str:
+    await asyncio.Event().wait()
+    return "unreachable"  # pragma: no cover
+
+
+class TestGatherBounded:
+    @pytest.mark.asyncio
+    async def test_all_fast_calls_succeed(self):
+        results = await _gather_bounded(
+            [_fast("a"), _fast("b"), _fast("c")], timeout=5,
+        )
+        assert sorted(results) == ["a", "b", "c"]
+
+    @pytest.mark.asyncio
+    async def test_one_straggler_does_not_discard_the_others(self):
+        """The core regression case: 2 fast calls + 1 that never resolves.
+        The 2 successful results must still come back, not be thrown away."""
+        start = time.monotonic()
+        results = await _gather_bounded(
+            [_fast("a"), _fast("b"), _never_finishes()],
+            timeout=0.2,
+        )
+        elapsed = time.monotonic() - start
+
+        assert sorted(results) == ["a", "b"]
+        # Must return once the timeout for the straggler elapses, not hang
+        # waiting for it, and not take substantially longer than the bound.
+        assert elapsed < 2.0, f"took {elapsed:.1f}s, expected ~0.2s"
+
+    @pytest.mark.asyncio
+    async def test_all_calls_timing_out_raises(self):
+        with pytest.raises(asyncio.TimeoutError):
+            await _gather_bounded(
+                [_never_finishes(), _never_finishes()], timeout=0.1,
+            )
+
+    @pytest.mark.asyncio
+    async def test_single_call_wrapping_a_list_result(self):
+        """OpenAIProvider wraps ONE call whose own result is a list[str]
+        (the API's own n candidates) -- confirm _gather_bounded is generic
+        over the per-call return type, not hardcoded to plain strings."""
+        async def _batch() -> list[str]:
+            return ["x", "y", "z"]
+
+        results = await _gather_bounded([_batch()], timeout=5)
+        assert results == [["x", "y", "z"]]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  GeminiProvider — confirms it actually wires into _gather_bounded
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class _FakeGeminiResponse:
+    def __init__(self, text: str):
+        self.text = text
+        self.candidates = []
+
+
+class _FakeGeminiModels:
+    """Stands in for client.aio.models -- one call per index, with
+    per-index delay/failure control, so we can simulate a straggler
+    without touching the real google-genai SDK."""
+
+    def __init__(self, delays: dict[int, float | None]):
+        self.delays = delays
+        self.call_count = 0
+
+    async def generate_content(self, model, contents, config):
+        idx = self.call_count
+        self.call_count += 1
+        delay = self.delays.get(idx)
+        if delay is None:
+            await asyncio.Event().wait()  # simulates a hung call
+        elif delay:
+            await asyncio.sleep(delay)
+        return _FakeGeminiResponse(f"script_{idx}")
+
+
+class _FakeGeminiAio:
+    def __init__(self, models: _FakeGeminiModels):
+        self.models = models
+
+
+class _FakeGeminiClient:
+    def __init__(self, delays: dict[int, float | None]):
+        self.aio = _FakeGeminiAio(_FakeGeminiModels(delays))
+
+
+class TestGeminiProviderPartialSuccess:
+    @pytest.mark.asyncio
+    async def test_straggler_among_k_calls_does_not_lose_survivors(self, monkeypatch):
+        monkeypatch.setattr(settings, "llm_timeout_seconds", 0.2)
+        provider = GeminiProvider(api_key="fake", model_name="gemini-test")
+        # Bypass _get_client()'s real google.genai import entirely.
+        provider._client = _FakeGeminiClient(delays={0: 0.0, 1: 0.0, 2: None})
+
+        results = await provider.generate(
+            system_prompt="sys", user_prompt="user",
+            temperature=0.7, max_tokens=1000, n=3,
+        )
+
+        # The two fast calls (index 0, 1) must survive; the hung one
+        # (index 2) must be dropped, not wipe out the whole batch.
+        assert sorted(results) == ["script_0", "script_1"]
+
+    @pytest.mark.asyncio
+    async def test_all_k_calls_hanging_raises(self, monkeypatch):
+        monkeypatch.setattr(settings, "llm_timeout_seconds", 0.1)
+        provider = GeminiProvider(api_key="fake", model_name="gemini-test")
+        provider._client = _FakeGeminiClient(delays={0: None, 1: None})
+
+        with pytest.raises(asyncio.TimeoutError):
+            await provider.generate(
+                system_prompt="sys", user_prompt="user",
+                temperature=0.7, max_tokens=1000, n=2,
+            )
