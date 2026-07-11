@@ -883,7 +883,8 @@ class AgentLoop:
             try:
                 results: list[Z3Result] = await asyncio.wait_for(
                     asyncio.gather(*[
-                        self._sandbox.execute(script) for script in scripts
+                        self._sandbox.execute(script, seed_input=request.seed_input or b"")
+                        for script in scripts
                     ]),
                     timeout=sandbox_timeout,
                 )

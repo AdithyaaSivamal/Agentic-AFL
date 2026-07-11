@@ -190,6 +190,73 @@ class TestErrorHandling:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  Seed preservation (unconstrained byte_N vars should not zero out
+#  already-valid seed bytes — see magma_libpng validation finding)
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestSeedPreservation:
+    """
+    _model_to_payload() only preserves seed bytes for positions that
+    never appear as a byte_N variable in the Z3 model at all. If the
+    LLM's script *declares* byte_0..byte_N (e.g. to model the whole
+    buffer) but only *constrains* a few of them, Z3 is free to pick an
+    arbitrary value (usually 0) for the rest -- silently corrupting
+    already-valid seed data on merge. The sandbox should pin any
+    declared-but-unconstrained byte var to its seed value, relaxing the
+    pin only when it actually conflicts with the script's real
+    constraints.
+    """
+
+    @pytest.mark.asyncio
+    async def test_unconstrained_byte_preserves_seed_value(self, sandbox):
+        script = _script(
+            "byte_0 = BitVec('byte_0', 8)\n"
+            "byte_1 = BitVec('byte_1', 8)\n"
+            "s.add(byte_0 == 0x11)\n"
+            # byte_1 is declared but never constrained by the script.
+        )
+        seed = bytes([0x11, 0xAA])
+        result = await sandbox.execute(script, seed_input=seed)
+        assert result.verdict == Z3Verdict.SAT
+        assert result.model["byte_0"] == 0x11
+        assert result.model["byte_1"] == 0xAA  # preserved, not Z3's default 0
+
+    @pytest.mark.asyncio
+    async def test_genuinely_constrained_byte_still_solves_correctly(self, sandbox):
+        # Seed for both bytes is 0xAA; XOR of two 0xAA is 0, not 0x11, so
+        # at least one pin MUST be relaxed for the real constraint to hold.
+        script = _script(
+            "byte_0 = BitVec('byte_0', 8)\n"
+            "byte_1 = BitVec('byte_1', 8)\n"
+            "s.add(byte_0 ^ byte_1 == 0x11)\n"
+        )
+        seed = bytes([0xAA, 0xAA])
+        result = await sandbox.execute(script, seed_input=seed)
+        assert result.verdict == Z3Verdict.SAT
+        assert (result.model["byte_0"] ^ result.model["byte_1"]) == 0x11
+
+    @pytest.mark.asyncio
+    async def test_no_seed_behaves_as_before(self, sandbox):
+        """Without a seed (default), no pinning is applied at all."""
+        script = _script("x = BitVec('x', 32)\ns.add(x == 42)")
+        result = await sandbox.execute(script)
+        assert result.verdict == Z3Verdict.SAT
+        assert result.model["x"] == 42
+
+    @pytest.mark.asyncio
+    async def test_pin_bookkeeping_vars_excluded_from_model(self, sandbox):
+        """Internal '_pin_*' assumption vars must never leak into the
+        returned model dict."""
+        script = _script(
+            "byte_0 = BitVec('byte_0', 8)\n"
+            "s.add(byte_0 == 5)\n"
+        )
+        result = await sandbox.execute(script, seed_input=bytes([9]))
+        assert result.verdict == Z3Verdict.SAT
+        assert all(not k.startswith("_pin_") for k in result.model)
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Execution: Timeout (health-review gap — previously untested)
 # ═══════════════════════════════════════════════════════════════════════
 

@@ -32,6 +32,16 @@ Key Design Decisions:
     5. OUTPUT PARSING: The subprocess prints its result as JSON to stdout.
        The sandbox parses this to construct the Z3Result.
 
+    6. SEED-BYTE PRESERVATION: if the LLM's script declares byte_N
+       variables for positions it never actually constrains (e.g. it
+       models the whole buffer but only asserts the CRC relationship),
+       Z3 is otherwise free to pick an arbitrary value -- usually 0 --
+       for the rest, silently corrupting already-valid seed data when
+       the caller merges the model back onto the seed. When a seed is
+       provided, the harness pins every declared byte_N to its seed
+       value by default and relaxes only the pins an unsat-core proves
+       conflict with the script's real constraints (see _wrap_script).
+
 Security Note:
     The LLM-generated code is UNTRUSTED. The sandbox MUST:
     - Run in a subprocess with restricted permissions.
@@ -64,7 +74,9 @@ _MAX_MEMORY_BYTES = 512 * 1024 * 1024
 # {timeout_ms} and {script_text} are substituted at runtime.
 _HARNESS_TEMPLATE = '''\
 import json
+import re
 import sys
+import time
 import resource
 
 # --- Resource limits ---
@@ -99,6 +111,13 @@ try:
 except AttributeError:
     pass
 
+# Seed bytes for pinning declared-but-unconstrained byte_N vars (empty
+# list if the caller didn't supply a seed). Pattern must stay in sync
+# with agent_loop.py's _model_to_payload() byte-var regex.
+_SEED_BYTES = {seed_bytes_json}
+_BYTE_VAR_RE = re.compile(r"(?:byte_?|b_)(\\d+)")
+_MAX_RELAX_ITERS = 10
+
 def _execute():
     result = {{"verdict": "unknown", "model": None, "error": None}}
     try:
@@ -109,11 +128,40 @@ def _execute():
 {indented_script}
         # === END LLM SCRIPT ===
 
-        check = s.check()
+        # Pin every declared byte_N var to its seed value by default;
+        # z3's own __eq__/__bool__ are overloaded for expression-building,
+        # so core membership is compared by str(), not by `in`/set().
+        _pins = []
+        for _name, _val in list(locals().items()):
+            _m = _BYTE_VAR_RE.match(_name)
+            if not _m or not is_expr(_val) or not is_bv(_val):
+                continue
+            _idx = int(_m.group(1))
+            if _idx >= len(_SEED_BYTES):
+                continue
+            _p = Bool("_pin_" + _name)
+            s.add(Implies(_p, _val == _SEED_BYTES[_idx]))
+            _pins.append(_p)
+
+        _deadline = time.time() + ({timeout_ms} / 1000.0)
+        check = unknown
+        for _ in range(_MAX_RELAX_ITERS + 1):
+            _remaining_ms = max(1, int((_deadline - time.time()) * 1000))
+            s.set("timeout", _remaining_ms)
+            check = s.check(*_pins)
+            if check != unsat:
+                break
+            _core_names = {{str(c) for c in s.unsat_core()}}
+            if not _core_names:
+                break
+            _pins = [p for p in _pins if str(p) not in _core_names]
+
         if check == sat:
             m = s.model()
             model_dict = {{}}
             for d in m.decls():
+                if str(d).startswith("_pin_"):
+                    continue
                 val = m[d]
                 if is_bv_value(val):
                     model_dict[str(d)] = val.as_long()
@@ -175,12 +223,16 @@ class Z3Sandbox:
         self.keep_scripts = keep_scripts
         self.sandbox_dir.mkdir(parents=True, exist_ok=True)
 
-    async def execute(self, script: Z3Script) -> Z3Result:
+    async def execute(self, script: Z3Script, seed_input: bytes = b"") -> Z3Result:
         """
         Execute a Z3 script in an isolated subprocess.
 
         Args:
             script: The Z3Script to execute.
+            seed_input: Original seed bytes, if any. When provided, any
+                byte_N variable the script declares but never actually
+                constrains is pinned to seed_input[N] instead of being
+                left to Z3's arbitrary default (see _wrap_script).
 
         Returns:
             Z3Result with verdict, model (if SAT), error message, and timing.
@@ -188,7 +240,7 @@ class Z3Sandbox:
         start_time = time.monotonic()
 
         # Step 1: Wrap and write the script.
-        wrapped = self._wrap_script(script.script_text)
+        wrapped = self._wrap_script(script.script_text, seed_input=seed_input)
         script_path = self._write_temp_script(wrapped)
 
         try:
@@ -225,7 +277,7 @@ class Z3Sandbox:
                 except OSError:
                     pass
 
-    def _wrap_script(self, script_text: str) -> str:
+    def _wrap_script(self, script_text: str, seed_input: bytes = b"") -> str:
         """
         Wrap the LLM-generated Z3 script with the execution harness.
 
@@ -320,6 +372,7 @@ class Z3Sandbox:
             timeout_ms=self.timeout_seconds * 1000,
             indented_script=indented,
             max_memory=_MAX_MEMORY_BYTES,
+            seed_bytes_json=json.dumps(list(seed_input)),
         )
 
     def _write_temp_script(self, wrapped_script: str) -> Path:

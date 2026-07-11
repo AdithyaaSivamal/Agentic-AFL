@@ -71,7 +71,7 @@ class FakeSandbox:
         self.calls_this_turn = 0
         self.timeout_seconds = 5  # matches Z3Sandbox's attribute the fix reads
 
-    async def execute(self, script: Z3Script) -> Z3Result:
+    async def execute(self, script: Z3Script, seed_input: bytes = b"") -> Z3Result:
         if script.generation_idx == 0:
             self.turn += 1
             self.calls_this_turn = 0
@@ -94,7 +94,7 @@ class HangingSandbox:
 
     timeout_seconds = 1  # tiny, so the defense-in-depth wait_for fires fast
 
-    async def execute(self, script: Z3Script) -> Z3Result:
+    async def execute(self, script: Z3Script, seed_input: bytes = b"") -> Z3Result:
         await asyncio.Event().wait()  # never resolves on its own
 
 
