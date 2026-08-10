@@ -78,6 +78,14 @@ class AgenticAFLConfig:
             os.environ.get("GHIDRA_PROJECT_DIR", str(_user_scoped_tmp("ghidra_projects")))
         )
     )
+    # Wall-clock budget for the headless Ghidra subprocess (analysis +
+    # decompiled-C extraction). Default assumes Ghidra runs with enough
+    # spare CPU headroom alongside the live AFL++ campaign; on
+    # CPU-constrained hosts (e.g. a 2-vCPU VM) contention with AFL++ can
+    # push a sub-2-minute standalone analysis past 180s.
+    ghidra_timeout_seconds: int = field(
+        default_factory=lambda: int(os.environ.get("GHIDRA_TIMEOUT_SECONDS", "180"))
+    )
     # Maximum number of basic blocks to traverse during backward slicing.
     # Deeper slices = more context for the LLM but higher token cost.
     max_slice_depth: int = 20

@@ -287,16 +287,17 @@ class PCodeSlicer:
 
         logger.info("Running Ghidra headless: %s", " ".join(cmd))
 
+        ghidra_timeout = settings.ghidra_timeout_seconds
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=180,  # 3 minute timeout for Ghidra analysis + decompiled C extraction
+                timeout=ghidra_timeout,
             )
         except subprocess.TimeoutExpired as e:
             raise PCodeSlicerError(
-                f"Ghidra headless timed out after 180s for {binary_path} @ {stall_address}"
+                f"Ghidra headless timed out after {ghidra_timeout}s for {binary_path} @ {stall_address}"
             ) from e
         except FileNotFoundError as e:
             raise PCodeSlicerError(
