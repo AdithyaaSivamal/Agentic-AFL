@@ -11,7 +11,7 @@ Tests the full CARM pipeline against a live PostgreSQL instance:
 Prerequisites:
   - PostgreSQL running on localhost:5432
   - Database 'agentic_afl' exists with user 'agentic_afl'
-  - Run: python experiments/tests/test_phase3_carm.py
+  - Run: python experiments/integration/test_phase3_carm.py
 """
 from __future__ import annotations
 import asyncio, sys

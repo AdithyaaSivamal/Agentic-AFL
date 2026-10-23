@@ -2,11 +2,13 @@
 
 **Neuro-Symbolic Fuzzing Orchestration for ICS/OT Math Walls**
 
-Agentic-AFL autonomously bypasses cryptographic integrity checks (CRC, HMAC, sequence counters) that block coverage-guided fuzzers. It detects AFL++ coverage stalls, extracts constraint semantics via Ghidra P-Code analysis, translates them to Z3 specifications using an LLM, solves for valid inputs, and injects them back into the running fuzzer — all without human intervention.
+Agentic-AFL is an autonomous co-process that runs alongside an unmodified AFL++ campaign, detects coverage plateaus caused by checksum and sequence-counter integrity checks, and closes the loop end to end: it extracts the blocking constraint via Ghidra P-Code slicing, has an LLM translate it to a Z3 model, verifies the solution in an isolated sandbox, and injects the result straight into AFL++'s own sync directory — no human in the loop, and the fuzzer never blocks waiting for any of it.
 
 ```bash
 agentic-afl fuzz ./my_harness -i ./seeds --duration 6h --tui
 ```
+
+**Scope, stated plainly:** this targets constraints Z3 can model directly from the decompiled logic — CRCs, checksums, and sequence/state counters. It explicitly does **not** break cryptographic MACs or signatures (HMAC, RSA, etc.) — those require either the secret key or symbolically modeling a hash/cipher primitive, neither of which this system attempts. When the extracted slice resolves into a call to an opaque crypto library rather than inlineable arithmetic, the system detects that it can't make progress and defers the stall rather than claiming a false bypass.
 
 ## How It Works
 
@@ -18,14 +20,16 @@ Payload injection ◄── Z3 SAT solve ◄── LLM Z3 translation ◄── 
         │
         ▼
 AFL++ resumes with ──► Diversity injection ──► Custom mutator deployment
-new coverage               (35 variants)        (CRC-aware mutation)
+new coverage            (protocol-valid variants)   (CRC-aware mutation)
 ```
 
-**Three-level coverage escalation:**
+**Three-level coverage escalation**, after a stall is solved:
 
-1. **Solve** — Z3-generated payload bypasses the math wall (e.g., 15 → 84 edges)
-2. **Diversify** — 35 protocol-compliant frame variants maximize state coverage
-3. **Sustain** — Custom mutator ensures every AFL++ mutation produces valid checksums (e.g., 84 → 157 edges)
+1. **Solve** — inject the Z3-derived payload that satisfies the constraint.
+2. **Diversify** — generate a protocol-valid family of additional frame variants (currently up to 18 Modbus RTU frames or 10 CRC-32 ICS frames, depending on target) so the mutator has real material to work from, not just one input.
+3. **Sustain** — if configured, restart AFL++ with a constraint-preserving custom mutator so every subsequent mutation keeps producing valid checksums.
+
+**A real, cited result** (full run log and independent cross-machine re-run in `documents/`, kept local — see Evaluation below): against the `magma_libpng` target (libpng's IHDR CRC-32 check), AFL++ alone plateaus at 123 edges; Agentic-AFL detects the stall, solves it, and the campaign reaches 188 edges — reproduced independently on a second machine at 165 → 186 edges.
 
 ## Quick Start
 
@@ -34,16 +38,16 @@ new coverage               (35 variants)        (CRC-aware mutation)
 - Python 3.11+
 - [AFL++](https://github.com/AFLplusplus/AFLplusplus) 4.x (with `afl-fuzz` and `afl-cc` in `$PATH`)
 - [Ghidra](https://ghidra-sre.org/) 11.x
-- Docker (for PostgreSQL)
-- An LLM API key (Gemini, OpenAI, or DeepSeek)
+- Docker (for PostgreSQL — optional; falls back to an in-memory store without it)
+- An LLM API key (Gemini, OpenAI, or a local provider)
 
 ### Install
 
 ```bash
-git clone https://github.com/<your-username>/agentic-afl.git
-cd agentic-afl
+git clone https://github.com/AdithyaaSivamal/Agentic-AFL.git
+cd Agentic-AFL
 
-# Start PostgreSQL (CARM spec store).
+# Start PostgreSQL (CARM spec store) — optional.
 docker compose up -d
 
 # Install the package.
@@ -84,11 +88,11 @@ agentic-afl plot ./results/campaign.json -o coverage.png
 
 ```
 agentic_afl/
-├── cli.py                     # CLI entry point (subcommands: fuzz, plot)
+├── cli.py                     # CLI entry point (subcommands: fuzz, check, analyze, plot)
 ├── campaign.py                # CampaignRunner — AFL++ + AgentLoop lifecycle
 ├── tui.py                     # Rich TUI dashboard (braille coverage chart)
 ├── config.py                  # Environment-based configuration
-├── constants.py               # Constraint tag ontology (15 structural tags)
+├── constants.py               # Constraint tag ontology (16 structural tags)
 ├── models.py                  # Core dataclasses
 │
 ├── extractor/                 # Phase 1: Binary Analysis
@@ -102,11 +106,11 @@ agentic_afl/
 ├── orchestrator/              # Phase 2: LLM + Z3 Reasoning
 │   ├── agent_loop.py          # Async orchestration daemon (ReAct loop)
 │   ├── llm_client.py          # Multi-provider LLM API (Gemini/OpenAI/local)
-│   ├── z3_sandbox.py          # Sandboxed Z3 execution with timeout
-│   ├── retrieval_carm.py      # Constraint-Aware Retrieval (Jaccard similarity)
+│   ├── z3_sandbox.py          # Sandboxed Z3 execution (timeout + seed-preserving pins)
+│   ├── retrieval_carm.py      # Constraint-Aware Retrieval (weighted Jaccard + complexity + solve-history)
 │   └── prompts/               # Z3 translation + ReAct prompt templates
 │
-├── fuzzer_bridge/             # Phase 3: AFL++ Integration
+├── fuzzer_bridge/              # Phase 3: AFL++ Integration
 │   ├── stall_detector.py      # Edge-plateau detection + GDB frontier tracing
 │   ├── payload_injector.py    # Atomic sync-dir file injection
 │   └── diversity_generator.py # Post-solve frame variant generation
@@ -115,33 +119,24 @@ agentic_afl/
     └── spec_store.py          # PostgreSQL spec store (asyncpg)
 ```
 
-## Evaluation Targets
+## Evaluation
 
-10 targets across 6 constraint types, including 4 real-world ICS libraries:
+Results below are reported per-target with the actual evidence behind them, not a combined claim — a deliberate choice after finding that an earlier version of this table overstated several targets.
 
-| Target | Constraint | Math Wall | Real-World |
-|---|---|---|---|
-| ICS CRC-32 | CRC-32/IEEE 802.3 | `crc32_calc` | Synthetic |
-| Libmodbus | CRC-16/Modbus (0xA001) | `crc16` | ✅ |
-| OpenDNP3 | CRC-16/DNP3 | `LinkLayerParser::ReadHeader` | ✅ |
-| lib60870 | Sequence number | `checkSequenceNumber` | ✅ |
-| NASA cFS | XOR additive checksum | `CFE_MSG_ValidateChecksum` | ✅ |
-| Modbus RTU | CRC-16/Modbus | `check_crc` | Synthetic |
-| Custom Hash | Rotate-XOR-accumulate | `check_hash` | Synthetic |
-| Arithmetic | Linear (a*7 + b*13) | `check_linear` | Synthetic |
-| IEC 104 | Bit-field + sequence | `check_sequence_number` | Synthetic |
-| State Machine | XOR challenge-response | `transition_auth_challenge` | Synthetic |
+**Verified bypass, with a real cited run:**
 
-Build and run the evaluation targets:
+| Target | Constraint | Result |
+|---|---|---|
+| `magma_libpng` (real-world: libpng) | CRC-32/IEEE, table-driven | 123 → 188 edges; independently reproduced on a second machine at 165 → 186 edges |
+| `ics_crc32` (synthetic) | CRC-32/IEEE 802.3 | 9 → 157 edges (best of 3 runs; one LLM call each run, final edge count varies 84–157 across runs) |
+| `arithmetic` (synthetic) | Linear constraint (a·7 + b·13) | 7 → 12 edges, full accept |
+
+**Implemented in the target registry, not yet independently re-verified in this pass:** `libmodbus`, `OpenDNP3`, `lib60870`, `NASA cFS`, Modbus RTU, custom rotate-XOR hash, IEC 104, challenge-response state machine. Several of these were attempted in earlier development; the saved run data for them is mixed (some show AFL++ making progress without any LLM involvement, one recorded run did not bypass its wall) rather than a clean confirmation, so they're listed here as available targets, not proven results.
 
 ```bash
-# Build a target (example: ICS CRC-32).
-cd experiments/test_targets
-./build_ics_crc32.sh
-
-# Run an E2E campaign via the target registry.
-cd experiments/tests
-python3 run_e2e_campaign.py ics_crc32 --duration 15m --tui
+# Run an E2E campaign via the target registry (pass a target key from TARGETS in the script).
+cd experiments/integration
+python3 test_generalization_matrix.py magma_libpng
 ```
 
 ## Configuration
@@ -159,6 +154,7 @@ POSTGRES_DSN=postgresql://agentic_afl:agentic_afl@localhost:5432/agentic_afl
 
 # Ghidra
 GHIDRA_INSTALL_DIR=/opt/ghidra
+GHIDRA_TIMEOUT_SECONDS=180             # Raise on CPU-constrained hosts running Ghidra alongside a live campaign
 
 # Tuning
 K_VOTE_COUNT=3                         # Parallel Z3 script candidates
@@ -167,25 +163,25 @@ Z3_TIMEOUT_SECONDS=30                  # Per-script Z3 solve timeout
 
 ## Key Design Decisions
 
-1. **Algorithm-agnostic constraint profiling** — The system tags structural patterns (`BITWISE_LOOP`, `INDEXED_LOOKUP`, `LINEAR_CONSTRAINT`), not algorithm names. This lets it generalize to proprietary checksums it has never seen before, via Jaccard similarity matching in CARM.
+1. **Algorithm-agnostic constraint profiling** — The system tags structural patterns (`BITWISE_LOOP`, `INDEXED_LOOKUP`, `LINEAR_CONSTRAINT`, ...) rather than algorithm names. This lets it match a proprietary checksum against a previously-solved standard one when both present the same computational shape, via a weighted Jaccard/complexity/solve-history score in CARM.
 
 2. **Filesystem-based IPC** — The agent communicates with AFL++ through the sync directory (atomic file writes). No shared memory, no fuzzer modifications, no blocking IPC.
 
-3. **ReAct self-correction** — When Z3 generation fails, the error is fed back to the LLM for iterative repair (up to 5 turns). This mitigates the ~30% syntax error rate of single-shot LLM code generation.
+3. **ReAct self-correction** — When Z3 generation fails, the solver's own error output is fed back to the LLM for a bounded number of repair turns, rather than retrying blind.
 
-4. **K-way voting** — 3 parallel Z3 scripts are generated per stall. The first to return SAT wins. This exploits the variance in LLM outputs to maximize solve probability.
+4. **K-way voting** — Several parallel Z3 scripts are generated per stall; the first to return SAT wins. This exploits variance in LLM outputs to raise the odds that at least one candidate is both syntactically valid and correct.
 
-## Literature Foundation
+5. **Seed-preserving sandbox** — A script that only needs to constrain a checksum field, but declares byte variables across the whole buffer, would otherwise let the solver pick arbitrary (typically zero) values for every other field — silently corrupting already-valid data outside the constraint. The sandbox pins every declared-but-unconstrained byte to its seed value by default, relaxing a pin only when an unsat-core proves it genuinely conflicts with the real constraint.
 
-| Component | References |
+## Related Work
+
+| This project's component | Related prior work |
 |---|---|
-| Backward slicing | AutoBug, HyLLfuzz |
-| Constraint profiling | ConstraintLLM §2.1 |
-| CARM retrieval | ConstraintLLM §2.2-2.3 |
-| LLM → Z3 translation | LLM-Sym §3.2, Logic-LM §3 |
-| K-way voting | LINC §2 |
-| ReAct self-correction | SAILOR §4, Logic-LM §3.3 |
-| Sync-dir injection | HyLLfuzz §3.2, TDD_v2 §4.4 |
+| Backward slicing from a stall address | AutoBug (Li, Meng & Duck, OOPSLA 2025); HyLLfuzz (2024) |
+| LLM → Z3 translation + self-correction | Logic-LM (Pan et al., EMNLP Findings 2023) |
+| K-way voting | LINC (Olausson et al., EMNLP 2023) |
+| Structural constraint ontology + CARM retrieval | Original contribution of this project |
+| Sync-directory payload injection | Reuses AFL++'s own multi-instance foreign-sync convention; not drawn from external literature |
 
 ## License
 

@@ -8,7 +8,7 @@ Ghidra itself (subprocess.run is monkeypatched), so they run in
 milliseconds and need no external tooling.
 
 Live end-to-end validation against real Ghidra headless is covered
-separately by experiments/tests/test_live_ghidra.py.
+separately by experiments/integration/test_live_ghidra.py.
 """
 
 from __future__ import annotations

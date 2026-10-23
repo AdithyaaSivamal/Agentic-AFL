@@ -7,10 +7,10 @@ Tests the full data pipeline:
 Run with:
     cd <project_root>
     source venv/bin/activate
-    python -m pytest experiments/tests/test_phase2_integration.py -v
+    python -m pytest experiments/integration/test_phase2_integration.py -v
 
 Or run standalone:
-    python experiments/tests/test_phase2_integration.py
+    python experiments/integration/test_phase2_integration.py
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ produces a SAT result when executed in the Z3 sandbox.
 This test makes REAL API calls and costs real money.
 Skips gracefully if GEMINI_API_KEY is not set.
 
-Run:  python experiments/tests/test_live_llm.py
+Run:  python experiments/integration/test_live_llm.py
 """
 from __future__ import annotations
 import asyncio, json, os, sys, time

@@ -1,5 +1,9 @@
 # Agentic-AFL Development Environment
 venv/
+
+# Working/planning docs — design notes, paper drafts, health reports.
+# Not part of the released tool; kept local only.
+documents/
 .venv/
 __pycache__/
 *.pyc
@@ -16,8 +20,8 @@ logs/
 afl_output/
 .agentic_afl_workdir/
 data/
-experiments/tests/e2e_run/
-experiments/tests/e2e_campaign/
+experiments/integration/e2e_run/
+experiments/integration/e2e_campaign/
 
 # PostgreSQL Docker volume data (managed by docker compose)
 pgdata/

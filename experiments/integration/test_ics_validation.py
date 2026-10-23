@@ -5,7 +5,7 @@ Validates Phases 1+2 against realistic ICS protocol constraint patterns:
   - Modbus RTU: 5 walls (TID, PID, UID whitelist, FC dispatch, CRC-16)
   - IEC-104:    4 walls (Start byte, APDU length, I/S/U format, Sequence number)
 
-Run:  python experiments/tests/test_ics_validation.py
+Run:  python experiments/integration/test_ics_validation.py
 """
 from __future__ import annotations
 import asyncio, json, sys, tempfile
