@@ -182,7 +182,3 @@ Z3_TIMEOUT_SECONDS=30                  # Per-script Z3 solve timeout
 | K-way voting | LINC (Olausson et al., EMNLP 2023) |
 | Structural constraint ontology + CARM retrieval | Original contribution of this project |
 | Sync-directory payload injection | Reuses AFL++'s own multi-instance foreign-sync convention; not drawn from external literature |
-
-## License
-
-MIT
